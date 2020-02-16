@@ -1,5 +1,6 @@
 package com.sample.roomandpaginlibrary
 
+import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.asLiveData
@@ -17,10 +18,7 @@ import kotlinx.coroutines.channels.ConflatedBroadcastChannel
 import kotlinx.coroutines.channels.consume
 import kotlinx.coroutines.channels.consumeEach
 import kotlinx.coroutines.channels.first
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.asFlow
-import kotlinx.coroutines.flow.consumeAsFlow
-import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.*
 import okhttp3.OkHttpClient
 import java.lang.Error
 
@@ -29,11 +27,17 @@ import java.lang.Error
 class FirstViewModel(app: Application): AndroidViewModel(app) {
     var dbManager: DbManager = app.db
     val searchRepository = SearchRepository(viewModelScope)
+    val searchFactory = SearchDataSourceFactory(searchRepository)
+    val lingvoItems = searchFactory.toLiveData(pageSize = 20)
 
     val words = dbManager.getWordsWithTranslations().toLiveData(pageSize = 20)
-    val lingvoItems = SearchDataSourceFactory(searchRepository).toLiveData(pageSize = 20)
 
     init {
+//        searchRepository.scope.launch {
+//            searchRepository.resultPageFlow.collect {
+//                Log.d("test", it.toString())
+//            }
+//        }
     }
 
     @FlowPreview
@@ -41,13 +45,10 @@ class FirstViewModel(app: Application): AndroidViewModel(app) {
     class SearchRepository(val scope: CoroutineScope) {
         private var lingvoService = LingvoLive.createLingvoLiveService()
         val resultPages =  ConflatedBroadcastChannel<Resource<List<LingvoItem>>>(Resource.Uninitialized())
+        val resultPageFlow = resultPages.asFlow()
 
         var nextPageIndex = 0
         var canLoadNextPage = true
-
-        fun listenAsFlow(): Flow<Resource<List<LingvoItem>>> {
-            return resultPages.asFlow()
-        }
 
         fun loadNextPageIfNeeded() {
             if (canLoadNextPage && !resultPages.value.isLoading()) {
@@ -100,7 +101,7 @@ class FirstViewModel(app: Application): AndroidViewModel(app) {
     @FlowPreview
     class SearchDataSource(val repository: SearchRepository) : ItemKeyedDataSource<String, LingvoItem>() {
         private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
-        private val flow = repository.listenAsFlow()
+        private val flow = repository.resultPageFlow
 
         override fun loadInitial(
             params: LoadInitialParams<String>,
@@ -118,7 +119,7 @@ class FirstViewModel(app: Application): AndroidViewModel(app) {
                 }
                 print(result)
                 if (result.isError()) {
-                    callback.onError(java.lang.Exception("Load Initial Error"))
+                    // it seems we need to just ignore it
                 } else {
                     callback.onResult(result.data()!!.toMutableList())
                 }

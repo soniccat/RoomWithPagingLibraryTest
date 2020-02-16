@@ -10,7 +10,7 @@ object LingvoLive {
     fun createLingvoLiveClient(): Retrofit {
         val client = OkHttpClient.Builder().addInterceptor(object : Interceptor {
             var token =
-                "YourToken after authorize"
+                ""
 
             override fun intercept(chain: Interceptor.Chain): Response {
                 val newRequest: Request = chain.request().newBuilder()

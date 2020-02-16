@@ -15,6 +15,5 @@ data class LingvoItem(@SerializedName("Title") val title: String,
         get() = articleId + dictionary
 }
 
-data class LingvoBody(@SerializedName("Text") val text: Int,
-                      @SerializedName("Node") val node: String,
-                      @SerializedName("Type") val type: Int)
+data class LingvoBody(@SerializedName("Node") val node: String,
+                      @SerializedName("Type") val type: Int?)
